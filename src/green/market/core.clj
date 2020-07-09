@@ -1,5 +1,21 @@
 (ns green.market.core)
 
+(def columns-ko {:date         :경락일자
+                 :market-code  :시장코드
+                 :kind-code    :부류코드
+                 :species-code :품종코드
+                 :deal-unit    :거래단량
+                 :unit-code    :단위코드
+                 :price        :거래가격})
+
+(def columns-en {:date         :DELNG_DE
+                 :market-code  :WHSAL_MRKT_NEW_CODE
+                 :kind-code    :CATGORY_NEW_CODE
+                 :species-code :STD_SPCIES_NEW_CODE
+                 :deal-unit    :DELNG_PRUT
+                 :unit-code    :STD_UNIT_NEW_CODE
+                 :price        :SBID_PRIC})
+
 (defn normalize [{:keys [date market-code kind-code species-code deal-unit unit-code price] :as record}]
   ; 부류코드 18~93까지는 제외
   (when (and kind-code (< kind-code 18))
