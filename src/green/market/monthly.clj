@@ -1,8 +1,9 @@
-(ns green.monthly
+(ns green.market.monthly
   (:require [clojure.java.io :as io]
-            [next.jdbc :as j]
+            [clojure.java.jdbc :as j]
             [clojure.data.csv :as csv]
-            [green.config :refer [db]]))
+            [green.market.core :refer [normalize process]]
+            [green.market.config :refer [db]]))
 
 (def ^{:doc "관심 컬럼 인덱스"}
   columns
@@ -20,8 +21,6 @@
    #_#_"거래량" 44                                             ; delngQy
    })
 
-;
-
 (def column-indices
   (sort (vals columns)))
 
@@ -33,29 +32,6 @@
 
 (defn column-filter [row]
   (mapv #(get row %) column-indices))
-
-(defn normalize [{:keys [date market-code kind-code species-code deal-unit unit-code price] :as record}]
-  ; 부류코드 18~93까지는 제외
-  (when (< kind-code 18)
-    (assert (#{"11" "12" "13"} unit-code) (pr-str "Unknown unit: " record))
-    (let [unit-price (/ (cond-> price
-                          (= unit-code "11") (* 1000)
-                          (= unit-code "13") (/ 1000))
-                        deal-unit)]
-      {:date         date
-       :market-code  market-code
-       :species-code species-code
-       :unit-price   unit-price})))
-
-(defn mean
-  ([vs] (mean (reduce + vs) (count vs)))
-  ([sm sz] (/ sm sz)))
-
-(defn aggregate [rows]
-  (let [prices (map :unit-price rows)]
-    {:price_min     (Math/round (apply min prices))
-     :price_max     (Math/round (apply max prices))
-     :price_average (Math/round (mean prices))}))
 
 (defn vec->map [row]
   (try
@@ -70,21 +46,34 @@
       (prn row)
       (throw e))))
 
-(defn process [data]
-  (->> data
-       (group-by (juxt :species-code :market-code))
-       (mapv (fn [[[species-code market-code] rows]]
-               (let [date (:date (first rows))]
-                 (assoc (aggregate rows)
-                   :date date
-                   :market_code market-code
-                   :farm_code species-code))))))
+(defn preprocess-new [row]
+  (->> row
+       (column-filter)
+       (vec->map)))
+
+(def errors (atom []))
+
+(defn preprocess-old [header cols]
+  (try
+    (assert (= (count cols) (count header)) "csv parse error.")
+
+    (let [record (zipmap header cols)
+          {:keys [DELNG_DE WHSAL_MRKT_NEW_CODE CATGORY_NEW_CODE STD_SPCIES_NEW_CODE DELNG_PRUT STD_UNIT_NEW_CODE SBID_PRIC]} record]
+      {:date         DELNG_DE
+       :market-code  WHSAL_MRKT_NEW_CODE
+       :kind-code    (Integer/parseInt CATGORY_NEW_CODE)
+       :species-code STD_SPCIES_NEW_CODE
+       :deal-unit    (Float/parseFloat DELNG_PRUT)
+       :unit-code    STD_UNIT_NEW_CODE
+       :price        (Float/parseFloat SBID_PRIC)})
+    (catch AssertionError _
+      (swap! errors conj cols)
+      nil)))
 
 (defn insert! [m]
   (prn (:date (first m)))
-  #_(time
-      (j/insert-multi! mysql-db :market_prices m)))
-
+  (time
+    (j/insert-multi! db :market_prices m)))
 
 (defn batch [suffix]
   (let [filename (str "원천실시간경락가격원시데이터_" suffix ".csv")
@@ -95,22 +84,26 @@
                      (io/reader :encoding "CP949")
                      (csv/read-csv))
 
-        header   (first rawdata)
+        header   (->> (first rawdata) (map keyword))
         data     (rest rawdata)]
 
-    ; 10월 부터는 컬럼 헤더가 영어로 되어 assert 주석 처리
-    #_(assert (= (map #(get header %) column-indices)
-                 (keys columns)))
+    (assert (= (count header) 45))
 
     (->> data
-         (map column-filter)
-         (partition-by first)
+         (map #(preprocess-old header %))
          (map normalize)
          (remove nil?)
+         (partition-by :date)
          (map process)
          (run! insert!))
     ))
 
 (comment
-  ;; resources 하위에 "원천실시간경락가격원시데이터_yyyyMM.csv" 파일 위치 후
-  (batch "201910"))
+  (do
+    (reset! errors [])
+    ;; resources 하위에 "원천실시간경락가격원시데이터_yyyyMM.csv" 파일 위치 후
+    (batch "201910"))
+
+  (when (pos? (count @errors))
+    (prn "ignored row count: " (count @errors)))
+  )

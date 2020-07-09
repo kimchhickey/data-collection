@@ -1,4 +1,4 @@
-(ns green.config)
+(ns green.market.config)
 
 (def db {:dbtype         ""
          :dbname         ""

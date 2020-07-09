@@ -1,11 +1,11 @@
-(ns green.daily
+(ns green.market.daily
   (:require [clojure.java.jdbc :as j]
             [clojure.zip :as zip]
             [clojure.data.zip.xml :as zx]
             [clojure.data.xml :as xml]
             [clojure.data.zip.xml :refer [xml-> tag=]]
-            [green.monthly :refer [normalize process]]
-            [green.config :refer [db]]
+            [green.market.core :refer [normalize process]]
+            [green.market.config :refer [db]]
             [clojure.string :as str]))
 
 
@@ -63,5 +63,5 @@
 
 (comment
   (time
-    (batch-daily "2020-07-04"))
+    (batch-daily "2020-07-07"))
   )
