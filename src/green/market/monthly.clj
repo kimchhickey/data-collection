@@ -21,7 +21,7 @@
    #_#_"등급코드" 33
    "거래가격" 37                                                ; sbidPric
    #_#_"산지코드" 40
-   #_#_"거래량" 44                                             ; delngQy
+   "거래량"  44                                                ; delngQy
    })
 
 (def errors (atom []))
@@ -52,17 +52,16 @@
   (time
     (j/insert-multi! db :market_prices m)))
 
-(defn batch [suffix]
-  (let [filename (str "원천실시간경락가격원시데이터_" suffix ".csv")
+(defn batch [filename]
+  (let [rawdata (-> filename
+                    (io/resource)
+                    (io/reader :encoding "CP949")
+                    (csv/read-csv))
+
+        header  (->> (first rawdata) (map keyword))
 
         ; ~3M rows
-        rawdata  (-> filename
-                     (io/resource)
-                     (io/reader :encoding "CP949")
-                     (csv/read-csv))
-
-        header   (->> (first rawdata) (map keyword))
-        data     (rest rawdata)]
+        data    (rest rawdata)]
 
     (assert (= (count header) 45))
     (assert (= header header-ko))
@@ -80,7 +79,10 @@
   (do
     (reset! errors [])
     ;; resources 하위에 "원천실시간경락가격원시데이터_yyyyMM.csv" 파일 위치 후
-    (batch "201908"))
+    (let [filename
+          #_"원천실시간경락가격원시데이터_201904.csv"
+          "도매시장실시간경락정보_201903.csv"]
+      (batch filename)))
 
   (when (pos? (count @errors))
     (prn "ignored row count: " (count @errors)))
