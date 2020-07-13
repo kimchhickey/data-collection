@@ -1,12 +1,15 @@
 (ns green.market.daily
   (:require [clojure.java.jdbc :as j]
+            [clj-time.core :as time]
+            [clj-time.format :refer [formatters unparse]]
             [clojure.zip :as zip]
             [clojure.data.zip.xml :as zx]
             [clojure.data.xml :as xml]
             [clojure.data.zip.xml :refer [xml-> tag=]]
             [green.market.core :refer [normalize process]]
             [green.market.config :refer [db-spec]]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [clj-time.core :as time]))
 
 
 (defn fetch-jobs [db date]
@@ -21,7 +24,7 @@
               [(:tag p) (-> p :content first)]))
        (into {})))
 
-(defn fetch-items [job-id]
+(defn fetch-items [db job-id]
   (let [root (->> (j/query db ["select data from price_temp where id = ?", job-id])
                   first
                   :data
@@ -48,7 +51,7 @@
      :price        (Float/parseFloat sbidPric)
      :amount       (Integer/parseInt delngQy)}))
 
-(defn update! [{:keys [date market_code farm_code total_amount num_deals]}]
+(defn update! [db {:keys [date market_code farm_code total_amount num_deals]}]
   (prn date market_code farm_code)
   (j/update! db :market_prices
              {:total_amount total_amount
@@ -58,7 +61,7 @@
 
 (defn save! [db job]
   (println job)
-  (->> (fetch-items job)
+  (->> (fetch-items db job)
        (map preprocess)
        (map normalize)
        process
@@ -70,7 +73,14 @@
       (prn "Number of jobs: " (count jobs))
       (run! #(save! db %) jobs))))
 
+
+(defn -main [& args]
+  (let [date (or (first args)
+                 (unparse (formatters :year-month-day) (time/now)))]
+    (batch-daily date)))
+
+
 (comment
   (time
-    (batch-daily "2020-07-10"))
+    (batch-daily "2020-07-13"))
   )
