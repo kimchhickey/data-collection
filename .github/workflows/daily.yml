@@ -1,8 +1,9 @@
 name: Market prices - daily
 
 on:
+  # 매일 8시 (KST)
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '0 23 * * *'
 
 jobs:
   build:
@@ -20,4 +21,9 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-${{ env.cache-name }}-
           
-    - run: clojure -m green.market.daily `date +"%Y-%m-%d"`
+    - run: clojure -m green.market.daily `date --date='0 day ago' '+%Y-%m-%d'`
+      env:
+        DB_NAME: ${{ secrets.DB_NAME }}
+        DB_HOST: ${{ secrets.DB_HOST }}
+        DB_USER: ${{ secrets.DB_USER }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
