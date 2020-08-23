@@ -2,8 +2,8 @@ name: Market prices - daily
 
 on:
   # 매일 8시 (KST)
-  schedule:
-    - cron: '0 23 * * *'
+  # schedule:
+  #   - cron: '0 23 * * *'
 
   workflow_dispatch:
 
