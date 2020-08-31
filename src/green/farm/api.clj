@@ -11,6 +11,22 @@
        "/"
        SERVICE_KEY))
 
+(defn crop-season-url [op-name]
+  (str "http://www.smartfarmkorea.net/Agree_WS/webservices/CropseasonRestService/"
+       op-name
+       "/"
+       SERVICE_KEY))
+
+(def years (range 2000 2020))
+
+(def target-list
+  {:참외    "080200"
+   :토마토   "080300"
+   :딸기    "080400"
+   :오이    "090100"
+   :파프리카 "132600"
+   :가지    "090300"})
+
 (defn users
   "모든 농가 정보"
   []
@@ -43,6 +59,38 @@
     (-> (str (base-url "getEnvDataList") "/" path)
         (slurp)
         (json/read-str :key-fn keyword))))
+
+(def all-cropping-serl-no-with-env
+  "2015년부터 2020년까지 우리가 타겟으로 하는 작물을 대상으로 하는 농가 중에, acqManlYn, acqCultiYn이 Y인 데이터"
+  (->> years
+       (map get-cropping-season-data-by-year)
+       (flatten)
+       (filter :itemCode)
+       (filter #(some (partial = (:itemCode %)) (vals target-list)))
+       (filter #(or (= (:acqManlYn %) "Y")
+                    (= (:acqCultiYn %) "Y")))
+       (sort-by (juxt :itemCode :croppingSerlNo))))
+
+(defn get-cropping-season-env-data-list [croppingSerlNo page]
+  "환경 값을 작기일련번호와 페이지로 조회"
+  (-> (str (crop-season-url "getCroppingSeasonEnvDataList") "/" croppingSerlNo "/" page)
+      (slurp)
+      (json/read-str :key-fn keyword)))
+
+(defn get-all-env [croppingSerlNo]
+  "첫번째 필드에 totalPage 정보가 있기 때문에, 해당 값을 기반으로 해서 전체 데이터를 조회"
+  (let [{:keys [totalPage]} (first (get-cropping-season-env-data-list croppingSerlNo 1))
+        pages (range 1 (inc (Integer/parseInt totalPage)))]
+    (->> pages
+         (map #(get-cropping-season-env-data-list croppingSerlNo %))
+         (flatten))))
+
+(defn get-cropping-season-data-list-by-year [year]
+  (-> (str (crop-season-url "getCroppingSeasonDataList") "/" year)
+      (slurp)
+      (json/read-str :key-fn keyword)))
+
+
 
 (defn cultivate-list
   "생육정보 토마토/파프리카/오이/가지"

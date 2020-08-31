@@ -47,7 +47,7 @@
 (defn map->csv [data columns filename]
   (with-open [writer (io/writer filename)]
     (let [header (map name columns)
-          body   (->> (next data)
+          body   (->> data ;; (next data)로 했을 때, get-all-env에서 첫번째 row가 실종됨.
                       (map #(mapv % columns)))]
       (csv/write-csv writer
                      (conj body header)))))
@@ -84,6 +84,32 @@
   ;; 1. 농가별 작기 현황 정보
   ;; 2. 작기 정보 목록
   ;; 3. 환경 정보 (시설원예)
+  (let [data    api/all-cropping-serl-no-with-env
+        columns [:croppingSerlNo
+                 :itemCode
+                 :itemName
+                 :fcltyId
+                 :addressName
+                 :acqAutoYn
+                 :croppingEndDate
+                 :croppingDate
+                 :acqManlYn
+                 :acqMgmtYn
+                 :acqCultiYn]]
+    (map->csv data columns "3-1. 제어생육정보등록유_작기정보목록.csv"))
+  
+  (let [data    (api/get-all-env 6)
+        columns [:itemCode
+                 :facilityId
+                 :num
+                 :measDate
+                 :cntCollect
+                 :fatrCode
+                 :ymd
+                 :senVal 
+                 :sectCode
+                 :fldCode]]
+    (map->csv data columns "3. 환경정보_샘플_6.csv"))
   
   
   (let [data    (:main cultivate-list)
