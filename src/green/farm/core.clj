@@ -12,16 +12,43 @@
             (->> (api/cropping-season uid)
                  (map #(assoc % :userId uid))))]
     (->> all-user-ids
-         (mapcat f))))
+         (map f))))
 
-(defn map->csv [data filename]
+(defn map->csv [data columns filename]
   (with-open [writer (io/writer filename)]
-    (let [header (keys (first data))
-          body   (map vals (next data))]
+    (let [header columns
+          body   (->> (next data)
+                      (map #(mapv % columns)))]
       (csv/write-csv writer
                      (conj body header)))))
 
 ;; dump
-(comment)
-(let [data (flatten all-cropping-seasons)]
-  (map->csv data "작기정보목록.csv"))
+(comment
+  (let [data    (flatten all-cropping-seasons)
+        columns [:userId
+                 :calCultivationArea
+                 :calPlantNum
+                 :croppingDate
+                 :croppingEndDate
+                 :croppingSeasonName
+                 :croppingSerlNo
+                 :croppingSystem
+                 :cultivationArea
+                 :floodlightDec
+                 :itemCode
+                 :leafArea
+                 :planSlabNum
+                 :plantDensity
+                 :plantNum
+                 :standardPlantDensity
+                 :statusCode
+                 :statusMessage
+                 :stemSlabNum
+                 :stndMeta
+                 :stndSolar
+                 :stndTemp
+                 :stndWeight]]
+    (map->csv data columns "작기정보목록.csv")))
+
+(let [data]
+  (map->csv data "경영정보목록.csv"))
