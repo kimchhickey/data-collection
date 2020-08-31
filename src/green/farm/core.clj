@@ -39,10 +39,10 @@
          (map f)
          (flatten))))
 
-(def cultivate-list
-  {:strawberry   (get-cultivate-list api/strawberry-cultivate-list)
-   :korean-melon (get-cultivate-list api/fruit-cultivate-list)
-   :etc          (get-cultivate-list api/cultivate-list)})
+(def all-cultivate-list
+  {:main         (get-cultivate-list api/cultivate-list)
+   :strawberry   (get-cultivate-list api/strawberry-cultivate-list)
+   :korean-melon (get-cultivate-list api/fruit-cultivate-list)})
 
 (defn map->csv [data columns filename]
   (with-open [writer (io/writer filename)]
@@ -86,7 +86,7 @@
   ;; 3. 환경 정보 (시설원예)
   
   
-  (let [data    (:etc cultivate-list)
+  (let [data    (:main cultivate-list)
         columns [:itemCode
                  :userId
                  :croppingSerlNo
