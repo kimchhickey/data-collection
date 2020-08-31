@@ -76,7 +76,7 @@
   [userId croppingSerlNo]
   (-> (str (base-url "getManagementData") "/" userId "/" croppingSerlNo)
       (slurp)
-      (json/read-str :keyfn keyword)))
+      (json/read-str :key-fn keyword)))
 
 
 (comment
